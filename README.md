@@ -71,11 +71,12 @@ It supports:
 
 ```bash
 make
-
+```
+---
 ▶️ Usage
 
 Run the assembler with an .asm file:
-
+---
 📄 License
 
 This project is created for educational purposes as part of the Nand2Tetris learning journey.
