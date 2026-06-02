@@ -42,6 +42,7 @@ typedef struct
     Parser *parser;
     SymbolTable *table;
     uint16_t next_ram_free_slot;
+    size_t next_free_rom_slot;
     FILE *output;
 }Code;
 
@@ -57,16 +58,16 @@ static const struct TableEntity destEntityTable[] = {
 };
 
 static const struct TableEntity computeEntityTable[] = {
-    {"0", "101010"}, {"1", "111111"}, {"-1", "111010"},
-    {"D", "001100"}, {"A", "110000"}, {"M", "110000"},
-    {"!D", "001101"}, {"!A", "110001"}, {"!M", "110001"},
-    {"-D", "001111"}, {"-A", "110011"}, {"-M", "110011"},
+    {"0", "101010"},   {"1", "111111"},   {"-1", "111010"},
+    {"D", "001100"},   {"A", "110000"},   {"M", "110000"},
+    {"!D", "001101"},  {"!A", "110001"},  {"!M", "110001"},
+    {"-D", "001111"},  {"-A", "110011"},  {"-M", "110011"},
     {"D+1", "011111"}, {"A+1", "110111"}, {"M+1", "110111"},
     {"D-1", "001110"}, {"A-1", "110010"}, {"M-1", "110010"},
-    {"D+A", "000010"}, {"D+M", "000010"}, {"D-A", "010011"},
-    {"D-M", "010011"}, {"A-D", "000111"}, {"M-D", "000111"},
-    {"D&A", "000000"}, {"D&M", "000000"}, {"D|A", "010101"},
-    {"D|M", "010101"}, {NULL, NULL}
+    {"D+A", "000010"}, {"D+M", "000010"}, {"D+M", "000010"}, 
+    {"D-A", "010011"}, {"D-M", "010011"}, {"A-D", "000111"},
+    {"M-D", "000111"}, {"D&A", "000000"}, {"D&M", "000000"},
+    {"D|A", "010101"}, {"D|M", "010101"}, {NULL, NULL}
 };
 
 static const struct TableEntity jumpEntityTable[] = {
@@ -79,7 +80,7 @@ static SymbolTable* init_symbol_table_with_values(void);
 static int scan(Code *code);
 static int generate(Code *code);
 void free_code(Code *c);
-static int generate_A_instruction(SymbolTable *table, const char* symbol, char bitsBuffer[17]);
+static int generate_A_instruction(Code* code, const char* symbol, char bitsBuffer[17]);
 static void generate_C_instruction(const char* dest, const char* comp, const char* jump, char bitsBuffer[17]);
 static int to_uint16(const char* s, uint16_t *target);
 static void to_binary(uint16_t number, char *output);
@@ -112,6 +113,7 @@ Code* init_code(Parser *parser, const char* filename)
     c->parser = parser;
     c->next_ram_free_slot = R15 + 1;
     c->output = outfile;
+    c->next_free_rom_slot = 0;
 
     return c;
 }
@@ -202,33 +204,81 @@ static int scan(Code *code)
         if (instyp == INVALID) { 
             return -1;
         }
-        
-        if (instyp == A_INSTRUCTION)
+
+        switch (instyp)
         {
-            symbol_ptr = symbol(code->parser);
+        case A_INSTRUCTION:
+            symbol_ptr = symbol(code->parser);  
             errnum = to_uint16(symbol_ptr, &val);
             if (errnum == OVERFLOW_ERR)
             {
                 fprintf(stderr, "Err overflow on line: %zu\n", current_line_number(code->parser));
                 return OVERFLOW_ERR;
             }
-
-            // if already doesnt exist to handle reserve keyboards and L_instructions.
-            if (errnum == NOT_NUMBER && !symbol_table_get(code->table, symbol_ptr, &val))
-            { 
-                symbol_table_set(code->table, symbol_ptr, code->next_ram_free_slot);
-                code->next_ram_free_slot++;
-            }
-        }else if (instyp == L_INSTRUCTION)
-        {   
+        case C_INSTRUCTION:
+            code->next_free_rom_slot++;
+            break;
+        case L_INSTRUCTION:
             symbol_ptr = symbol(code->parser);
-            size_t cln = current_line_number(code->parser);
-            symbol_table_set(code->table, symbol_ptr, cln);
+            symbol_table_set(code->table, symbol_ptr, code->next_free_rom_slot);
+            break;
+        case INVALID:
+        default:
+            return -1;
         }
     }
 
     return 0;
 }
+
+// static int scan(Code *code)
+// {   
+//     reset(code->parser);
+
+//     int result;
+//     instruction_type instyp;
+//     const char* symbol_ptr;
+//     uint16_t val;
+//     int errnum;
+
+//     while(hasMoreLines(code->parser))
+//     {
+//         result = advance(code->parser);
+//         if (result != PARSE_OK) {
+//             return result;
+//         }
+
+//         instyp = instructionType(code->parser);
+//         if (instyp == INVALID) { 
+//             return -1;
+//         }
+        
+//         if (instyp == A_INSTRUCTION)
+//         {
+//             symbol_ptr = symbol(code->parser);
+//             errnum = to_uint16(symbol_ptr, &val);
+//             if (errnum == OVERFLOW_ERR)
+//             {
+//                 fprintf(stderr, "Err overflow on line: %zu\n", current_line_number(code->parser));
+//                 return OVERFLOW_ERR;
+//             }
+
+//             // if already doesnt exist to handle reserve keyboards and L_instructions.
+//             if (errnum == NOT_NUMBER && !symbol_table_get(code->table, symbol_ptr, &val))
+//             { 
+//                 symbol_table_set(code->table, symbol_ptr, code->next_ram_free_slot);
+//                 code->next_ram_free_slot++;
+//             }
+//         }else if (instyp == L_INSTRUCTION)
+//         {   
+//             symbol_ptr = symbol(code->parser);
+//             size_t cln = current_line_number(code->parser);
+//             symbol_table_set(code->table, symbol_ptr, cln);
+//         }
+//     }
+
+//     return 0;
+// }
 
 static int generate(Code *code)
 {
@@ -254,7 +304,7 @@ static int generate(Code *code)
         instyp = instructionType(code->parser);
         if (instyp == A_INSTRUCTION) {
             symbol_ptr = symbol(code->parser); 
-            errnum = generate_A_instruction(code->table, symbol_ptr, bitsBufer);
+            errnum = generate_A_instruction(code, symbol_ptr, bitsBufer);
             if (errnum == UNEXPECTED) {
                 return UNEXPECTED;
             }
@@ -273,7 +323,7 @@ static int generate(Code *code)
     return 0;
 }
 
-static int generate_A_instruction(SymbolTable *table,const char* symbol, char bitsBuffer[17])
+static int generate_A_instruction(Code* code, const char* symbol, char bitsBuffer[17])
 {   
     for (int i = 0; i < 17; i++) {
         bitsBuffer[i] = '0';
@@ -288,9 +338,7 @@ static int generate_A_instruction(SymbolTable *table,const char* symbol, char bi
 
     if (perr == NOT_NUMBER)
     {
-        if (!symbol_table_get(table, symbol, &val)){
-            return UNEXPECTED;
-        }
+        val = code->next_ram_free_slot++;
     }
 
     to_binary(val, bitsBuffer);
