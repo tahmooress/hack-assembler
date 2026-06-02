@@ -1,5 +1,9 @@
 # 🧠 Hack Assembler (Nand2Tetris)
 
+<p align="center">
+  <img src="assets/nand-to-tetris-assembler.jpg" width="300"/>
+</p>
+
 A low-level assembler written in **C**, built as part of the *Nand2Tetris* course/book exercises.
 
 This project implements a complete assembler for the **Hack computer**, translating `.asm` assembly files into `.hack` machine code.
