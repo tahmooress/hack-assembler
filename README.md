@@ -54,19 +54,22 @@ It supports:
 ---
 
 ## 📁 Project Structure
-.<br>
-├── src/<br>
-│ ├── main.c # Entry point <br>
-│ ├── parser.c / .h # Instruction parsing logic<br>
-│ ├── code.c / .h # Translates mnemonics to binary<br>
-│ ├── symbol_table.c / .h# Symbol management<br>
-│ ├── assembler.c # Core orchestration logic<br>
-│
-├── bin/ # Compiled binary output<br>
-├── tests/ # Sample .asm files<br>
-├── Makefile<br>
-└── README.md<br>
-
+```text
+.
+├── src/
+│   ├── main.c              # Entry point
+│   ├── parser.c            # Instruction parsing logic
+│   ├── parser.h
+│   ├── code.c              # Translates mnemonics to binary
+│   ├── code.h
+│   ├── symbol_table.c      # Symbol management
+│   ├── symbol_table.h
+│   └── assembler.c         # Core orchestration logic
+├── bin/                    # Compiled binary output
+├── tests/                  # Sample .asm files
+├── Makefile
+└── README.md
+```
 ---
 
 ## 🔧 Build Instructions
